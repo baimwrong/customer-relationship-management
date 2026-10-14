@@ -1,0 +1,5 @@
+first_name,last_name,company_name,email,phone,mobile,job_title,department,status,notes
+Henrik,Svensson,Nordic Robotics AB,h.svensson@nordicrobotics.example.com,+46 8 555-0311,+46 70 555-0312,VP Manufacturing Operations,Operations,active,Primary technical stakeholder
+Elena,Moreno,Apex Cloud Systems,emoreno@apexcloud.example.com,+1 555-0322,+1 555-0323,VP Customer Success,Customer Experience,vip,Executive sponsor for multi-year contract
+Brian,O'Connor,Vanguard Financial Partners,boconnor@vanguardpartners.example.com,+1 212 555-0333,+1 212 555-0334,Senior Legal Counsel,Legal & Compliance,active,Responsible for master service agreements
+Amina,Khoury,BioHealth Diagnostics,akhoury@biohealthdiag.example.com,+1 617 555-0344,,Director of Clinical Supply,Procurement,lead,Initial discovery conversation participant

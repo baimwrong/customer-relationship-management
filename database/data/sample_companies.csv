@@ -1,0 +1,5 @@
+name,industry,website,email,phone,address,city,state,country,postal_code,annual_revenue,employees_count,status,notes
+Helios Renewable Energies,Energy,https://heliosenergy.example.com,info@heliosenergy.example.com,+1 303 555-0411,500 Solar Way,Denver,CO,United States,80202,32000000,420,customer,Major solar infrastructure firm across western US
+Kensington Capital Partners,Finance,https://kensingtoncap.example.com,contact@kensingtoncap.example.com,+44 20 7946 0422,12 Berkeley Square,London,,United Kingdom,W1J 6BQ,65000000,850,active,Private equity and portfolio management group
+Synapse BioPharma,Healthcare,https://synapsebio.example.com,procurement@synapsebio.example.com,+1 617 555-0433,400 Tech Square,Cambridge,MA,United States,02139,19500000,310,prospect,Clinical trials automation prospect
+Valence Microelectronics,Technology,https://valencemicro.example.com,sales@valencemicro.example.com,+1 408 555-0444,2200 Innovation Drive,San Jose,CA,United States,95134,84000000,1400,active,Semiconductor design and manufacturing partner

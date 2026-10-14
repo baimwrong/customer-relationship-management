@@ -1,0 +1,5 @@
+title,company_name,stage,amount,probability,expected_close_date,deal_type,notes
+Helios Power Grid Integration,Helios Renewable Energies,proposal,190000,60,2026-11-30,new_business,Solar telemetry integration with IoT platform
+Kensington Portfolio Data Migration,Kensington Capital Partners,negotiation,340000,80,2026-12-15,new_business,Final security audit signoff pending
+Synapse Lab Instrument Connectivity,Synapse BioPharma,needs_analysis,85000,40,2027-01-20,new_business,Discovery meetings with laboratory director
+Valence Global Capacity Expansion,Valence Microelectronics,qualification,520000,20,2027-02-28,new_business,Initial enterprise architectural review

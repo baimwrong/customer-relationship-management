@@ -1,0 +1,347 @@
+:root {
+    --crm-primary: #3b82f6;
+    --crm-primary-hover: #2563eb;
+    --crm-sidebar-bg: #0f172a;
+    --crm-sidebar-hover: #1e293b;
+    --crm-sidebar-text: #94a3b8;
+    --crm-sidebar-active: #38bdf8;
+    --crm-body-bg: #f8fafc;
+    --crm-card-border: #e2e8f0;
+}
+
+body {
+    background-color: var(--crm-body-bg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1e293b;
+    min-height: 100vh;
+}
+
+/* Layout Wrapper */
+.crm-wrapper {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Sidebar */
+.crm-sidebar {
+    width: 270px;
+    background-color: var(--crm-sidebar-bg);
+    color: #f8fafc;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.25s ease-in-out;
+    z-index: 1030;
+}
+
+.crm-sidebar .sidebar-brand {
+    padding: 1.25rem 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.crm-sidebar .sidebar-brand i {
+    color: #38bdf8;
+    font-size: 1.5rem;
+}
+
+.crm-sidebar .nav-section-title {
+    padding: 1rem 1.5rem 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+}
+
+.crm-sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.65rem 1.5rem;
+    color: var(--crm-sidebar-text);
+    font-size: 0.925rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    border-left: 3px solid transparent;
+}
+
+.crm-sidebar .nav-link i {
+    font-size: 1.15rem;
+    width: 1.25rem;
+    text-align: center;
+}
+
+.crm-sidebar .nav-link:hover {
+    color: #ffffff;
+    background-color: var(--crm-sidebar-hover);
+}
+
+.crm-sidebar .nav-link.active {
+    color: #ffffff;
+    background-color: rgba(56, 189, 248, 0.12);
+    border-left-color: var(--crm-sidebar-active);
+    font-weight: 600;
+}
+
+.crm-sidebar .sidebar-user {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Main Content Area */
+.crm-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+.crm-topbar {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+
+.crm-content {
+    padding: 1.75rem;
+    flex-grow: 1;
+}
+
+/* Card Styling */
+.card {
+    border: 1px solid var(--crm-card-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    background-color: #ffffff;
+}
+
+.card-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--crm-card-border);
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+/* Stat Metric Cards */
+.kpi-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+/* Kanban Board Styling */
+.kanban-board {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    padding-bottom: 1.5rem;
+    align-items: flex-start;
+}
+
+.kanban-col {
+    flex: 0 0 320px;
+    background-color: #f1f5f9;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    max-height: calc(100vh - 210px);
+    display: flex;
+    flex-direction: column;
+}
+
+.kanban-col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+.kanban-card-container {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-right: 0.25rem;
+}
+
+.kanban-item {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    padding: 0.85rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    cursor: grab;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.kanban-item:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-color: #94a3b8;
+}
+
+/* Timeline Components */
+.activity-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 2px;
+    background-color: #e2e8f0;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.timeline-icon {
+    position: absolute;
+    left: -2rem;
+    top: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+    letter-spacing: 0.02em;
+}
+
+/* Tables */
+.table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+}
+
+.table tbody td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+}
+
+/* Quick Action Button Group */
+.btn-crm-primary {
+    background-color: var(--crm-primary);
+    color: #ffffff;
+    border-color: var(--crm-primary);
+}
+
+.btn-crm-primary:hover {
+    background-color: var(--crm-primary-hover);
+    color: #ffffff;
+}
+
+/* Progress Stepper for Deals */
+.deal-stage-stepper {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+}
+
+.deal-stage-step {
+    flex: 1;
+    min-width: 110px;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.deal-stage-step.active {
+    background-color: #3b82f6;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+.deal-stage-step.completed {
+    background-color: #10b981;
+    color: #ffffff;
+    border-color: #059669;
+}
+
+.deal-stage-step.lost {
+    background-color: #ef4444;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+/* Mobile Sidebar Toggle */
+@media (max-width: 991.98px) {
+    .crm-sidebar {
+        position: fixed;
+        left: -270px;
+        top: 0;
+        bottom: 0;
+    }
+    .crm-sidebar.show {
+        left: 0;
+    }
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1025;
+    }
+    .sidebar-overlay.show {
+        display: block;
+    }
+}

@@ -1,0 +1,6 @@
+first_name,last_name,company_name,email,phone,job_title,source,status,estimated_value,score,notes
+Samantha,Reed,Quantum Horizons,sreed@quantum.example.com,+1 555-0211,Chief Product Officer,website,new,65000,75,Interested in Q1 enterprise deployment
+Lucas,Vanderbilt,Metro Rail Systems,lvanderbilt@metrorail.example.com,+1 555-0222,VP Infrastructure,event,contacted,120000,80,Met at SmartTransit Summit 2026
+Miriam,Al-Mansoor,Falcon Aerospace,miriam@falcon.example.com,+1 555-0233,Procurement Director,referral,qualified,280000,92,Referred by Vanguard Financial CIO
+Evelyn,Torres,Cascade Analytics,etorres@cascade.example.com,+1 555-0244,Director of BI,advertising,new,45000,60,Inquired on automated telemetry reporting
+Oliver,Sinclair,Nordic Logistics AB,osinclair@nordiclog.example.com,+46 8 555-0255,Chief Operating Officer,partner,contacted,95000,70,Requires multi-region compliance integration
