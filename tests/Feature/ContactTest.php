@@ -65,7 +65,10 @@ class ContactTest extends TestCase
     public function test_can_update_contact(): void
     {
         $user = User::factory()->create();
-        $contact = Contact::factory()->create(['first_name' => 'OldFirstName']);
+        $contact = Contact::factory()->create([
+            'first_name' => 'OldFirstName',
+            'assigned_user_id' => $user->id,
+        ]);
 
         $response = $this->actingAs($user)->put(route('contacts.update', $contact), [
             'first_name' => 'NewFirstName',
@@ -82,24 +85,44 @@ class ContactTest extends TestCase
 
     public function test_can_delete_contact(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $contact = Contact::factory()->create();
 
-        $response = $this->actingAs($user)->delete(route('contacts.destroy', $contact));
+        $response = $this->actingAs($admin)->delete(route('contacts.destroy', $contact));
 
         $response->assertRedirect(route('contacts.index'));
         $this->assertDatabaseMissing('contacts', ['id' => $contact->id]);
     }
 
+    public function test_sales_rep_cannot_delete_contact(): void
+    {
+        $rep = User::factory()->salesRep()->create();
+        $contact = Contact::factory()->create();
+
+        $response = $this->actingAs($rep)->delete(route('contacts.destroy', $contact));
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('contacts', ['id' => $contact->id]);
+    }
+
     public function test_can_export_contacts_to_csv(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         Contact::factory()->create(['first_name' => 'ExportableContactUnique']);
 
-        $response = $this->actingAs($user)->get(route('contacts.export'));
+        $response = $this->actingAs($admin)->get(route('contacts.export'));
 
         $response->assertStatus(200);
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $this->assertStringContainsString('ExportableContactUnique', $response->streamedContent());
+    }
+
+    public function test_sales_rep_cannot_export_contacts_to_csv(): void
+    {
+        $rep = User::factory()->salesRep()->create();
+
+        $response = $this->actingAs($rep)->get(route('contacts.export'));
+
+        $response->assertStatus(403);
     }
 }

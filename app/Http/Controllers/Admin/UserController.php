@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreUserRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -31,20 +30,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreUserRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', Password::defaults()],
-            'role' => ['required', Rule::in([User::ROLE_ADMIN, User::ROLE_SALES_MANAGER, User::ROLE_SALES_REP])],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'job_title' => ['nullable', 'string', 'max:100'],
-            'department' => ['nullable', 'string', 'max:100'],
-            'is_active' => ['boolean'],
-        ]);
-
-        $validated['password'] = Hash::make($validated['password']);
+        $validated = $request->validated();
         $validated['is_active'] = $request->boolean('is_active', true);
 
         User::create($validated);
@@ -60,26 +48,38 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $user): RedirectResponse
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role' => ['required', Rule::in([User::ROLE_ADMIN, User::ROLE_SALES_MANAGER, User::ROLE_SALES_REP])],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'job_title' => ['nullable', 'string', 'max:100'],
-            'department' => ['nullable', 'string', 'max:100'],
-            'is_active' => ['boolean'],
-            'password' => ['nullable', Password::defaults()],
-        ]);
+        $validated = $request->validated();
 
-        if (! empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
+        // Safeguard: Ensure at least one active administrator remains
+        if ($user->isAdmin() && ($validated['role'] ?? '') !== User::ROLE_ADMIN) {
+            $otherActiveAdmins = User::where('role', User::ROLE_ADMIN)
+                ->where('is_active', true)
+                ->where('id', '!=', $user->id)
+                ->count();
+
+            if ($otherActiveAdmins === 0) {
+                return back()->withInput()->with('error', 'Cannot change role: the system must have at least one active administrator.');
+            }
+        }
+
+        if (empty($validated['password'])) {
             unset($validated['password']);
         }
 
-        $validated['is_active'] = $request->boolean('is_active');
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        if ($user->isAdmin() && ! $validated['is_active']) {
+            $otherActiveAdmins = User::where('role', User::ROLE_ADMIN)
+                ->where('is_active', true)
+                ->where('id', '!=', $user->id)
+                ->count();
+
+            if ($otherActiveAdmins === 0) {
+                return back()->withInput()->with('error', 'Cannot deactivate the last active administrator.');
+            }
+        }
 
         $user->update($validated);
 
@@ -91,6 +91,17 @@ class UserController extends Controller
     {
         if ($user->id === $request->user()->id) {
             return back()->with('error', 'You cannot deactivate your own account.');
+        }
+
+        if ($user->isAdmin() && $user->is_active) {
+            $otherActiveAdmins = User::where('role', User::ROLE_ADMIN)
+                ->where('is_active', true)
+                ->where('id', '!=', $user->id)
+                ->count();
+
+            if ($otherActiveAdmins === 0) {
+                return back()->with('error', 'Cannot deactivate the last active administrator in the system.');
+            }
         }
 
         $user->update(['is_active' => ! $user->is_active]);

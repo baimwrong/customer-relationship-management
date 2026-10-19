@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 // Authentication Routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.submit')->middleware('throttle:6,1');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function () {
     // Tasks & Action Items
     Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
     Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    Route::patch('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::patch('/tasks/{task}/toggle', [TaskController::class, 'toggle'])->name('tasks.toggle');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 
@@ -72,6 +73,6 @@ Route::middleware('auth')->group(function () {
     // Admin System Management
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::patch('/users/{user}/toggle', [UserController::class, 'toggleActive'])->name('users.toggle');
-        Route::resource('users', UserController::class);
+        Route::resource('users', UserController::class)->except(['show', 'destroy']);
     });
 });

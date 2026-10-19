@@ -112,4 +112,64 @@ class ActivityAndTaskTest extends TestCase
         $this->assertEquals('pending', $task->status);
         $this->assertNull($task->completed_at);
     }
+
+    public function test_can_update_task_details(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->create([
+            'title' => 'Original Task Title',
+            'priority' => 'low',
+            'assigned_user_id' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('tasks.update', $task), [
+            'title' => 'Updated Task Title',
+            'priority' => 'high',
+            'due_date' => now()->addDays(7)->format('Y-m-d'),
+            'description' => 'Updated description content.',
+        ]);
+
+        $response->assertRedirect();
+        $task->refresh();
+        $this->assertEquals('Updated Task Title', $task->title);
+        $this->assertEquals('high', $task->priority);
+        $this->assertEquals('Updated description content.', $task->description);
+    }
+
+    public function test_user_cannot_delete_other_user_activity(): void
+    {
+        $user = User::factory()->salesRep()->create();
+        $otherUser = User::factory()->salesRep()->create();
+        $activity = Activity::factory()->create(['user_id' => $otherUser->id]);
+
+        $response = $this->actingAs($user)->delete(route('activities.destroy', $activity));
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('activities', ['id' => $activity->id]);
+    }
+
+    public function test_user_cannot_update_other_user_task(): void
+    {
+        $user = User::factory()->salesRep()->create();
+        $otherUser = User::factory()->salesRep()->create();
+        $task = Task::factory()->create(['assigned_user_id' => $otherUser->id]);
+
+        $response = $this->actingAs($user)->patch(route('tasks.update', $task), [
+            'title' => 'Hacked Task Title',
+            'priority' => 'urgent',
+        ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_user_cannot_toggle_other_user_task(): void
+    {
+        $user = User::factory()->salesRep()->create();
+        $otherUser = User::factory()->salesRep()->create();
+        $task = Task::factory()->create(['assigned_user_id' => $otherUser->id]);
+
+        $response = $this->actingAs($user)->patch(route('tasks.toggle', $task));
+
+        $response->assertStatus(403);
+    }
 }

@@ -41,6 +41,9 @@ class LeadConversionService
             $company = null;
             if (! empty($options['company_id'])) {
                 $company = Company::find($options['company_id']);
+                if (! $company) {
+                    throw new InvalidArgumentException("Selected company ID #{$options['company_id']} does not exist.");
+                }
             } elseif (! empty($options['create_company']) || ! empty($lead->company_name) || ! empty($options['new_company_name'])) {
                 $companyName = $options['new_company_name'] ?: ($lead->company_name ?: "{$lead->full_name}'s Organization");
                 $company = Company::create([
@@ -121,7 +124,7 @@ class LeadConversionService
                 'activity_date' => now(),
                 'status' => 'completed',
                 'priority' => 'normal',
-                'user_id' => $actor?->id ?? $assignedUserId ?? 1,
+                'user_id' => $actor?->id ?? $assignedUserId ?? User::query()->value('id') ?? 1,
                 'company_id' => $company?->id,
                 'contact_id' => $contact->id,
                 'lead_id' => $lead->id,

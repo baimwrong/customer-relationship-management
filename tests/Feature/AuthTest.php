@@ -78,4 +78,21 @@ class AuthTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect(route('login'));
     }
+
+    public function test_login_is_rate_limited_after_many_failed_attempts(): void
+    {
+        for ($i = 0; $i < 6; $i++) {
+            $this->post('/login', [
+                'email' => 'sales@crm.test',
+                'password' => 'wrong-pass',
+            ]);
+        }
+
+        $response = $this->post('/login', [
+            'email' => 'sales@crm.test',
+            'password' => 'wrong-pass',
+        ]);
+
+        $response->assertStatus(429);
+    }
 }

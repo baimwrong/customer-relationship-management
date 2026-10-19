@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Contact;
 use App\Models\Deal;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class DealRequest extends FormRequest
 {
@@ -29,6 +31,26 @@ class DealRequest extends FormRequest
             'deal_type' => ['required', 'string', 'in:new_business,existing_business,renewal'],
             'loss_reason' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function (Validator $validator) {
+                if ($this->filled('company_id') && $this->filled('contact_id')) {
+                    $belongs = Contact::where('id', $this->input('contact_id'))
+                        ->where('company_id', $this->input('company_id'))
+                        ->exists();
+
+                    if (! $belongs) {
+                        $validator->errors()->add(
+                            'contact_id',
+                            'The selected contact does not belong to the selected company.'
+                        );
+                    }
+                }
+            },
         ];
     }
 }

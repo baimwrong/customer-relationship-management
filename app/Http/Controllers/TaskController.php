@@ -44,8 +44,26 @@ class TaskController extends Controller
         return back()->with('success', 'Task scheduled successfully.');
     }
 
+    public function update(TaskRequest $request, Task $task): RedirectResponse
+    {
+        $this->authorize('update', $task);
+
+        $data = $request->validated();
+        if ($data['status'] === 'completed' && $task->status !== 'completed') {
+            $data['completed_at'] = now();
+        } elseif ($data['status'] !== 'completed') {
+            $data['completed_at'] = null;
+        }
+
+        $task->update($data);
+
+        return back()->with('success', "Task '{$task->title}' updated successfully.");
+    }
+
     public function toggle(Task $task): RedirectResponse
     {
+        $this->authorize('toggle', $task);
+
         if ($task->status === 'completed') {
             $task->update([
                 'status' => 'pending',
@@ -65,6 +83,8 @@ class TaskController extends Controller
 
     public function destroy(Task $task): RedirectResponse
     {
+        $this->authorize('delete', $task);
+
         $task->delete();
 
         return back()->with('success', 'Task deleted.');

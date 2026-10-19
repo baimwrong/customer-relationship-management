@@ -74,12 +74,32 @@ class DealTest extends TestCase
         $response->assertSee('Inspectable Deal');
     }
 
+    public function test_cannot_create_deal_with_contact_belonging_to_different_company(): void
+    {
+        $user = User::factory()->create();
+        $companyA = Company::factory()->create(['name' => 'Company A']);
+        $companyB = Company::factory()->create(['name' => 'Company B']);
+        $contactB = Contact::factory()->create(['company_id' => $companyB->id]);
+
+        $response = $this->actingAs($user)->post(route('deals.store'), [
+            'title' => 'Mismatched Company Deal',
+            'company_id' => $companyA->id,
+            'contact_id' => $contactB->id,
+            'stage' => Deal::STAGE_PROPOSAL,
+            'amount' => 50000.00,
+        ]);
+
+        $response->assertSessionHasErrors('contact_id');
+        $this->assertDatabaseMissing('deals', ['title' => 'Mismatched Company Deal']);
+    }
+
     public function test_can_update_deal_stage_and_logs_transition(): void
     {
         $user = User::factory()->create();
         $deal = Deal::factory()->create([
             'stage' => Deal::STAGE_QUALIFICATION,
             'probability' => 20,
+            'assigned_user_id' => $user->id,
         ]);
 
         $response = $this->actingAs($user)->patch(route('deals.update-stage', $deal), [
@@ -99,15 +119,69 @@ class DealTest extends TestCase
         ]);
     }
 
-    public function test_can_export_deals_to_csv(): void
+    public function test_kanban_stage_ajax_update_success(): void
     {
         $user = User::factory()->create();
+        $deal = Deal::factory()->create([
+            'stage' => Deal::STAGE_QUALIFICATION,
+            'assigned_user_id' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->patchJson(route('deals.update-stage', $deal), [
+            'stage' => Deal::STAGE_PROPOSAL,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'stage' => Deal::STAGE_PROPOSAL,
+        ]);
+
+        $deal->refresh();
+        $this->assertEquals(Deal::STAGE_PROPOSAL, $deal->stage);
+    }
+
+    public function test_can_delete_deal_as_admin(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $deal = Deal::factory()->create();
+
+        $response = $this->actingAs($admin)->delete(route('deals.destroy', $deal));
+
+        $response->assertRedirect(route('deals.index'));
+        $this->assertDatabaseMissing('deals', ['id' => $deal->id]);
+    }
+
+    public function test_sales_rep_cannot_delete_other_user_deal(): void
+    {
+        $rep = User::factory()->salesRep()->create();
+        $otherUser = User::factory()->salesRep()->create();
+        $deal = Deal::factory()->create(['assigned_user_id' => $otherUser->id]);
+
+        $response = $this->actingAs($rep)->delete(route('deals.destroy', $deal));
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('deals', ['id' => $deal->id]);
+    }
+
+    public function test_can_export_deals_to_csv(): void
+    {
+        $admin = User::factory()->admin()->create();
         Deal::factory()->create(['title' => 'Exportable Deal Alpha']);
 
-        $response = $this->actingAs($user)->get(route('deals.export'));
+        $response = $this->actingAs($admin)->get(route('deals.export'));
 
         $response->assertStatus(200);
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $this->assertStringContainsString('Exportable Deal Alpha', $response->streamedContent());
+    }
+
+    public function test_sales_rep_cannot_export_deals_to_csv(): void
+    {
+        $rep = User::factory()->salesRep()->create();
+
+        $response = $this->actingAs($rep)->get(route('deals.export'));
+
+        $response->assertStatus(403);
     }
 }

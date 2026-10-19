@@ -107,13 +107,30 @@
                     <span class="badge bg-light text-dark border text-capitalize" style="font-size: 0.7rem;">
                         {{ $task->status }}
                     </span>
-                    <form method="POST" action="{{ route('tasks.destroy', $task) }}" onsubmit="return confirm('Delete this task?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-link text-danger p-1" title="Delete">
-                            <i class="bi bi-trash"></i>
+
+                    @can('update', $task)
+                        <button type="button" class="btn btn-sm btn-link text-primary p-1 edit-task-btn" title="Edit Task"
+                            data-bs-toggle="modal" data-bs-target="#editTaskModal"
+                            data-task-id="{{ $task->id }}"
+                            data-task-title="{{ $task->title }}"
+                            data-task-description="{{ $task->description }}"
+                            data-task-due="{{ $task->due_date?->format('Y-m-d') }}"
+                            data-task-priority="{{ $task->priority }}"
+                            data-task-status="{{ $task->status }}"
+                            data-task-user="{{ $task->assigned_user_id }}">
+                            <i class="bi bi-pencil"></i>
                         </button>
-                    </form>
+                    @endcan
+
+                    @can('delete', $task)
+                        <form method="POST" action="{{ route('tasks.destroy', $task) }}" onsubmit="return confirm('Delete this task?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-1" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    @endcan
                 </div>
             </div>
         @empty
@@ -129,4 +146,103 @@
         </div>
     @endif
 </div>
+
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form id="editTaskForm" method="POST" action="">
+                @csrf
+                @method('PATCH')
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-1 text-primary"></i> Edit Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Task Title</label>
+                        <input type="text" name="title" id="editTaskTitle" class="form-control form-control-sm" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Due Date</label>
+                            <input type="date" name="due_date" id="editTaskDueDate" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Assigned Rep</label>
+                            <select name="assigned_user_id" id="editTaskAssignee" class="form-select form-select-sm">
+                                @foreach($users as $usr)
+                                    <option value="{{ $usr->id }}">{{ $usr->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Priority</label>
+                            <select name="priority" id="editTaskPriority" class="form-select form-select-sm" required>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Status</label>
+                            <select name="status" id="editTaskStatus" class="form-select form-select-sm" required>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="deferred">Deferred</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Task Details / Instructions</label>
+                        <textarea name="description" id="editTaskDescription" class="form-control form-control-sm" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Update Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const editModal = document.getElementById('editTaskModal');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const taskId = button.getAttribute('data-task-id');
+            const title = button.getAttribute('data-task-title');
+            const description = button.getAttribute('data-task-description') || '';
+            const dueDate = button.getAttribute('data-task-due') || '';
+            const priority = button.getAttribute('data-task-priority');
+            const status = button.getAttribute('data-task-status');
+            const userId = button.getAttribute('data-task-user');
+
+            const form = document.getElementById('editTaskForm');
+            form.action = '/tasks/' + taskId;
+
+            document.getElementById('editTaskTitle').value = title;
+            document.getElementById('editTaskDescription').value = description;
+            document.getElementById('editTaskDueDate').value = dueDate;
+            document.getElementById('editTaskPriority').value = priority;
+            document.getElementById('editTaskStatus').value = status;
+            if (userId) {
+                document.getElementById('editTaskAssignee').value = userId;
+            }
+        });
+    }
+});
+</script>
+@endpush
 @endsection

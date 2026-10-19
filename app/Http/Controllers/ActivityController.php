@@ -48,6 +48,8 @@ class ActivityController extends Controller
 
     public function destroy(Activity $activity): RedirectResponse
     {
+        $this->authorize('delete', $activity);
+
         $activity->delete();
 
         return back()->with('success', 'Activity removed.');

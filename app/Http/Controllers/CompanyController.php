@@ -78,6 +78,8 @@ class CompanyController extends Controller
 
     public function edit(Company $company): View
     {
+        $this->authorize('update', $company);
+
         $users = User::where('is_active', true)->orderBy('name')->get();
 
         return view('companies.edit', [
@@ -88,6 +90,8 @@ class CompanyController extends Controller
 
     public function update(CompanyRequest $request, Company $company): RedirectResponse
     {
+        $this->authorize('update', $company);
+
         $company->update($request->validated());
 
         return redirect()->route('companies.show', $company)
@@ -96,6 +100,8 @@ class CompanyController extends Controller
 
     public function destroy(Company $company): RedirectResponse
     {
+        $this->authorize('delete', $company);
+
         $name = $company->name;
         $company->delete();
 
@@ -105,35 +111,46 @@ class CompanyController extends Controller
 
     public function export(Request $request): StreamedResponse
     {
+        $this->authorize('export', Company::class);
+
         $filters = $request->only(['search', 'status', 'industry', 'assigned_user_id']);
-        $companies = Company::query()->with('assignedUser')->filter($filters)->latest()->get();
+        $companiesQuery = Company::query()->with('assignedUser')->filter($filters)->latest();
 
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="companies_export_'.now()->format('Y-m-d_His').'.csv"',
         ];
 
-        return response()->stream(function () use ($companies) {
+        return response()->stream(function () use ($companiesQuery) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['ID', 'Name', 'Industry', 'Website', 'Email', 'Phone', 'City', 'Country', 'Annual Revenue', 'Employees', 'Status', 'Assigned Rep']);
 
-            foreach ($companies as $comp) {
+            foreach ($companiesQuery->cursor() as $comp) {
                 fputcsv($handle, [
                     $comp->id,
-                    $comp->name,
-                    $comp->industry,
-                    $comp->website,
-                    $comp->email,
-                    $comp->phone,
-                    $comp->city,
-                    $comp->country,
+                    $this->sanitizeCsvCell($comp->name),
+                    $this->sanitizeCsvCell($comp->industry),
+                    $this->sanitizeCsvCell($comp->website),
+                    $this->sanitizeCsvCell($comp->email),
+                    $this->sanitizeCsvCell($comp->phone),
+                    $this->sanitizeCsvCell($comp->city),
+                    $this->sanitizeCsvCell($comp->country),
                     $comp->annual_revenue,
                     $comp->employees_count,
                     $comp->status,
-                    $comp->assignedUser?->name,
+                    $this->sanitizeCsvCell($comp->assignedUser?->name),
                 ]);
             }
             fclose($handle);
         }, 200, $headers);
+    }
+
+    private function sanitizeCsvCell(mixed $value): mixed
+    {
+        if (is_string($value) && in_array(substr($value, 0, 1), ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

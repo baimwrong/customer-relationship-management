@@ -81,6 +81,8 @@ class LeadController extends Controller
 
     public function edit(Lead $lead): View
     {
+        $this->authorize('update', $lead);
+
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         return view('leads.edit', [
@@ -91,6 +93,8 @@ class LeadController extends Controller
 
     public function update(LeadRequest $request, Lead $lead): RedirectResponse
     {
+        $this->authorize('update', $lead);
+
         $lead->update($request->validated());
 
         return redirect()->route('leads.show', $lead)
@@ -99,6 +103,8 @@ class LeadController extends Controller
 
     public function convert(ConvertLeadRequest $request, Lead $lead, LeadConversionService $converter): RedirectResponse
     {
+        $this->authorize('convert', $lead);
+
         if ($lead->isConverted()) {
             return back()->with('error', 'This lead has already been converted.');
         }
@@ -121,6 +127,8 @@ class LeadController extends Controller
 
     public function destroy(Lead $lead): RedirectResponse
     {
+        $this->authorize('delete', $lead);
+
         $name = $lead->full_name;
         $lead->delete();
 
@@ -130,35 +138,46 @@ class LeadController extends Controller
 
     public function export(Request $request): StreamedResponse
     {
+        $this->authorize('export', Lead::class);
+
         $filters = $request->only(['search', 'status', 'source', 'assigned_user_id']);
-        $leads = Lead::query()->with('assignedUser')->filter($filters)->latest()->get();
+        $leadsQuery = Lead::query()->with('assignedUser')->filter($filters)->latest();
 
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="leads_export_'.now()->format('Y-m-d_His').'.csv"',
         ];
 
-        return response()->stream(function () use ($leads) {
+        return response()->stream(function () use ($leadsQuery) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['ID', 'First Name', 'Last Name', 'Company Name', 'Email', 'Phone', 'Job Title', 'Source', 'Status', 'Estimated Value', 'Score', 'Assigned Rep']);
 
-            foreach ($leads as $ld) {
+            foreach ($leadsQuery->cursor() as $ld) {
                 fputcsv($handle, [
                     $ld->id,
-                    $ld->first_name,
-                    $ld->last_name,
-                    $ld->company_name,
-                    $ld->email,
-                    $ld->phone,
-                    $ld->job_title,
-                    $ld->source,
+                    $this->sanitizeCsvCell($ld->first_name),
+                    $this->sanitizeCsvCell($ld->last_name),
+                    $this->sanitizeCsvCell($ld->company_name),
+                    $this->sanitizeCsvCell($ld->email),
+                    $this->sanitizeCsvCell($ld->phone),
+                    $this->sanitizeCsvCell($ld->job_title),
+                    $this->sanitizeCsvCell($ld->source),
                     $ld->status,
                     $ld->estimated_value,
                     $ld->score,
-                    $ld->assignedUser?->name,
+                    $this->sanitizeCsvCell($ld->assignedUser?->name),
                 ]);
             }
             fclose($handle);
         }, 200, $headers);
+    }
+
+    private function sanitizeCsvCell(mixed $value): mixed
+    {
+        if (is_string($value) && in_array(substr($value, 0, 1), ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

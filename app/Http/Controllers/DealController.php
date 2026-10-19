@@ -30,8 +30,9 @@ class DealController extends Controller
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $companies = Company::orderBy('name')->get(['id', 'name']);
 
-        $totalOpenAmount = Deal::open()->sum('amount');
-        $totalWonAmount = Deal::won()->sum('amount');
+        $filteredQuery = Deal::query()->filter($filters);
+        $totalOpenAmount = (clone $filteredQuery)->open()->sum('amount');
+        $totalWonAmount = (clone $filteredQuery)->won()->sum('amount');
 
         return view('deals.index', [
             'deals' => $deals,
@@ -84,6 +85,8 @@ class DealController extends Controller
 
     public function updateStage(Request $request, Deal $deal): RedirectResponse|JsonResponse
     {
+        $this->authorize('updateStage', $deal);
+
         $validated = $request->validate([
             'stage' => ['required', 'string', 'in:'.implode(',', array_keys(Deal::STAGES))],
             'loss_reason' => ['nullable', 'string', 'max:255'],
@@ -111,19 +114,20 @@ class DealController extends Controller
 
         $deal->update($updates);
 
-        // Log an activity for stage transition
-        Activity::create([
-            'type' => 'note',
-            'subject' => 'Deal Stage Updated to '.(Deal::STAGES[$newStage]['label'] ?? $newStage),
-            'description' => 'Stage transitioned from '.(Deal::STAGES[$oldStage]['label'] ?? $oldStage).' to '.(Deal::STAGES[$newStage]['label'] ?? $newStage).'.',
-            'activity_date' => now(),
-            'status' => 'completed',
-            'priority' => 'normal',
-            'user_id' => $request->user()->id,
-            'company_id' => $deal->company_id,
-            'contact_id' => $deal->contact_id,
-            'deal_id' => $deal->id,
-        ]);
+        if ($newStage !== $oldStage) {
+            Activity::create([
+                'type' => 'note',
+                'subject' => 'Deal Stage Updated to '.(Deal::STAGES[$newStage]['label'] ?? $newStage),
+                'description' => 'Stage transitioned from '.(Deal::STAGES[$oldStage]['label'] ?? $oldStage).' to '.(Deal::STAGES[$newStage]['label'] ?? $newStage).'.',
+                'activity_date' => now(),
+                'status' => 'completed',
+                'priority' => 'normal',
+                'user_id' => $request->user()->id,
+                'company_id' => $deal->company_id,
+                'contact_id' => $deal->contact_id,
+                'deal_id' => $deal->id,
+            ]);
+        }
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -170,9 +174,7 @@ class DealController extends Controller
             $data['probability'] = Deal::STAGES[$data['stage']]['probability'] ?? 20;
         }
 
-        if ($data['stage'] === Deal::STAGE_CLOSED_WON) {
-            $data['closed_at'] = now();
-        } elseif ($data['stage'] === Deal::STAGE_CLOSED_LOST) {
+        if ($data['stage'] === Deal::STAGE_CLOSED_WON || $data['stage'] === Deal::STAGE_CLOSED_LOST) {
             $data['closed_at'] = now();
         }
 
@@ -202,6 +204,8 @@ class DealController extends Controller
 
     public function edit(Deal $deal): View
     {
+        $this->authorize('update', $deal);
+
         $companies = Company::orderBy('name')->get(['id', 'name']);
         $contacts = Contact::orderBy('first_name')->get(['id', 'first_name', 'last_name', 'company_id']);
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
@@ -216,16 +220,38 @@ class DealController extends Controller
 
     public function update(DealRequest $request, Deal $deal): RedirectResponse
     {
-        $data = $request->validated();
+        $this->authorize('update', $deal);
 
-        if ($data['stage'] === Deal::STAGE_CLOSED_WON && $deal->stage !== Deal::STAGE_CLOSED_WON) {
+        $data = $request->validated();
+        $oldStage = $deal->stage;
+        $newStage = $data['stage'];
+
+        if ($newStage === Deal::STAGE_CLOSED_WON && $oldStage !== Deal::STAGE_CLOSED_WON) {
             $data['closed_at'] = now();
             $data['loss_reason'] = null;
-        } elseif ($data['stage'] === Deal::STAGE_CLOSED_LOST && $deal->stage !== Deal::STAGE_CLOSED_LOST) {
+        } elseif ($newStage === Deal::STAGE_CLOSED_LOST && $oldStage !== Deal::STAGE_CLOSED_LOST) {
             $data['closed_at'] = now();
+        } elseif ($newStage !== Deal::STAGE_CLOSED_WON && $newStage !== Deal::STAGE_CLOSED_LOST) {
+            $data['closed_at'] = null;
+            $data['loss_reason'] = null;
         }
 
         $deal->update($data);
+
+        if ($newStage !== $oldStage) {
+            Activity::create([
+                'type' => 'note',
+                'subject' => 'Deal Stage Updated to '.(Deal::STAGES[$newStage]['label'] ?? $newStage),
+                'description' => 'Stage transitioned from '.(Deal::STAGES[$oldStage]['label'] ?? $oldStage).' to '.(Deal::STAGES[$newStage]['label'] ?? $newStage).'.',
+                'activity_date' => now(),
+                'status' => 'completed',
+                'priority' => 'normal',
+                'user_id' => $request->user()->id,
+                'company_id' => $deal->company_id,
+                'contact_id' => $deal->contact_id,
+                'deal_id' => $deal->id,
+            ]);
+        }
 
         return redirect()->route('deals.show', $deal)
             ->with('success', "Deal '{$deal->title}' updated successfully.");
@@ -233,6 +259,8 @@ class DealController extends Controller
 
     public function destroy(Deal $deal): RedirectResponse
     {
+        $this->authorize('delete', $deal);
+
         $title = $deal->title;
         $deal->delete();
 
@@ -242,33 +270,44 @@ class DealController extends Controller
 
     public function export(Request $request): StreamedResponse
     {
+        $this->authorize('export', Deal::class);
+
         $filters = $request->only(['search', 'stage', 'assigned_user_id', 'company_id']);
-        $deals = Deal::query()->with(['company', 'contact', 'assignedUser'])->filter($filters)->latest()->get();
+        $dealsQuery = Deal::query()->with(['company', 'contact', 'assignedUser'])->filter($filters)->latest();
 
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="deals_export_'.now()->format('Y-m-d_His').'.csv"',
         ];
 
-        return response()->stream(function () use ($deals) {
+        return response()->stream(function () use ($dealsQuery) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['ID', 'Deal Title', 'Company', 'Contact', 'Stage', 'Amount', 'Probability', 'Expected Close Date', 'Type', 'Assigned Rep']);
 
-            foreach ($deals as $dl) {
+            foreach ($dealsQuery->cursor() as $dl) {
                 fputcsv($handle, [
                     $dl->id,
-                    $dl->title,
-                    $dl->company?->name,
-                    $dl->contact?->full_name,
+                    $this->sanitizeCsvCell($dl->title),
+                    $this->sanitizeCsvCell($dl->company?->name),
+                    $this->sanitizeCsvCell($dl->contact?->full_name),
                     Deal::STAGES[$dl->stage]['label'] ?? $dl->stage,
                     $dl->amount,
                     $dl->probability.'%',
                     $dl->expected_close_date?->format('Y-m-d'),
-                    $dl->deal_type,
-                    $dl->assignedUser?->name,
+                    $this->sanitizeCsvCell($dl->deal_type),
+                    $this->sanitizeCsvCell($dl->assignedUser?->name),
                 ]);
             }
             fclose($handle);
         }, 200, $headers);
+    }
+
+    private function sanitizeCsvCell(mixed $value): mixed
+    {
+        if (is_string($value) && in_array(substr($value, 0, 1), ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

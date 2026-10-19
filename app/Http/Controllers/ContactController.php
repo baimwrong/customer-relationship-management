@@ -81,6 +81,8 @@ class ContactController extends Controller
 
     public function edit(Contact $contact): View
     {
+        $this->authorize('update', $contact);
+
         $companies = Company::orderBy('name')->get(['id', 'name']);
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
@@ -93,6 +95,8 @@ class ContactController extends Controller
 
     public function update(ContactRequest $request, Contact $contact): RedirectResponse
     {
+        $this->authorize('update', $contact);
+
         $contact->update($request->validated());
 
         return redirect()->route('contacts.show', $contact)
@@ -101,6 +105,8 @@ class ContactController extends Controller
 
     public function destroy(Contact $contact): RedirectResponse
     {
+        $this->authorize('delete', $contact);
+
         $name = $contact->full_name;
         $contact->delete();
 
@@ -110,34 +116,45 @@ class ContactController extends Controller
 
     public function export(Request $request): StreamedResponse
     {
+        $this->authorize('export', Contact::class);
+
         $filters = $request->only(['search', 'status', 'company_id', 'assigned_user_id']);
-        $contacts = Contact::query()->with(['company', 'assignedUser'])->filter($filters)->latest()->get();
+        $contactsQuery = Contact::query()->with(['company', 'assignedUser'])->filter($filters)->latest();
 
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="contacts_export_'.now()->format('Y-m-d_His').'.csv"',
         ];
 
-        return response()->stream(function () use ($contacts) {
+        return response()->stream(function () use ($contactsQuery) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Mobile', 'Job Title', 'Department', 'Company', 'Status', 'Assigned Rep']);
 
-            foreach ($contacts as $ct) {
+            foreach ($contactsQuery->cursor() as $ct) {
                 fputcsv($handle, [
                     $ct->id,
-                    $ct->first_name,
-                    $ct->last_name,
-                    $ct->email,
-                    $ct->phone,
-                    $ct->mobile,
-                    $ct->job_title,
-                    $ct->department,
-                    $ct->company?->name,
+                    $this->sanitizeCsvCell($ct->first_name),
+                    $this->sanitizeCsvCell($ct->last_name),
+                    $this->sanitizeCsvCell($ct->email),
+                    $this->sanitizeCsvCell($ct->phone),
+                    $this->sanitizeCsvCell($ct->mobile),
+                    $this->sanitizeCsvCell($ct->job_title),
+                    $this->sanitizeCsvCell($ct->department),
+                    $this->sanitizeCsvCell($ct->company?->name),
                     $ct->status,
-                    $ct->assignedUser?->name,
+                    $this->sanitizeCsvCell($ct->assignedUser?->name),
                 ]);
             }
             fclose($handle);
         }, 200, $headers);
+    }
+
+    private function sanitizeCsvCell(mixed $value): mixed
+    {
+        if (is_string($value) && in_array(substr($value, 0, 1), ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

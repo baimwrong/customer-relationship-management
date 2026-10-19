@@ -21,38 +21,40 @@ class BulkImportService
     public function import(UploadedFile $file, string $entityType, User $user): array
     {
         $path = $file->getRealPath();
-        $content = file_get_contents($path);
-
-        // Strip UTF-8 BOM if present
-        if (str_starts_with($content, "\xEF\xBB\xBF")) {
-            $content = substr($content, 3);
+        $handle = fopen($path, 'r');
+        if (! $handle) {
+            throw new \InvalidArgumentException('Unable to open uploaded CSV file.');
         }
 
-        $lines = preg_split('/\r\n|\r|\n/', trim($content));
-        if (empty($lines)) {
+        // Strip UTF-8 BOM if present
+        $bomCheck = fread($handle, 3);
+        if ($bomCheck !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        // Read first line to detect delimiter and extract headers
+        $firstLine = fgets($handle);
+        if ($firstLine === false || trim($firstLine) === '') {
+            fclose($handle);
             throw new \InvalidArgumentException('Uploaded CSV file is empty.');
         }
 
-        // Determine delimiter (comma or semicolon)
-        $firstLine = $lines[0];
         $delimiter = substr_count($firstLine, ';') > substr_count($firstLine, ',') ? ';' : ',';
-
-        $headerRow = str_getcsv(array_shift($lines), $delimiter);
+        $headerRow = str_getcsv($firstLine, $delimiter);
         $headers = array_map(function ($h) {
             return Str::snake(trim(strtolower((string) $h)));
         }, $headerRow);
 
-        $totalRows = count($lines);
         $successCount = 0;
         $errorLog = [];
+        $rowNum = 1;
 
-        foreach ($lines as $index => $line) {
-            $rowNum = $index + 2; // Account for header row (line 1)
-            if (trim($line) === '') {
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+            $rowNum++;
+            if (empty($row) || (count($row) === 1 && $row[0] === null)) {
                 continue;
             }
 
-            $row = str_getcsv($line, $delimiter);
             if (count($row) < count($headers)) {
                 $row = array_pad($row, count($headers), '');
             }
@@ -75,6 +77,9 @@ class BulkImportService
                 $errorLog[] = "Row {$rowNum}: ".$e->getMessage();
             }
         }
+
+        fclose($handle);
+        $totalRows = max(0, $rowNum - 1);
 
         $status = empty($errorLog) ? 'completed' : ($successCount > 0 ? 'partial' : 'failed');
 

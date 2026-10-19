@@ -64,6 +64,7 @@ class LeadTest extends TestCase
             'job_title' => 'VP of Purchasing',
             'estimated_value' => 120000.00,
             'status' => Lead::STATUS_QUALIFIED,
+            'assigned_user_id' => $user->id,
         ]);
 
         $response = $this->actingAs($user)->post(route('leads.convert', $lead), [
@@ -104,6 +105,7 @@ class LeadTest extends TestCase
         $lead = Lead::factory()->create([
             'status' => Lead::STATUS_CONVERTED,
             'converted_at' => now(),
+            'assigned_user_id' => $user->id,
         ]);
 
         $response = $this->actingAs($user)->post(route('leads.convert', $lead), [
@@ -114,15 +116,46 @@ class LeadTest extends TestCase
         $response->assertSessionHas('error');
     }
 
+    public function test_can_delete_lead_as_admin(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $lead = Lead::factory()->create();
+
+        $response = $this->actingAs($admin)->delete(route('leads.destroy', $lead));
+
+        $response->assertRedirect(route('leads.index'));
+        $this->assertDatabaseMissing('leads', ['id' => $lead->id]);
+    }
+
+    public function test_sales_rep_cannot_delete_lead(): void
+    {
+        $rep = User::factory()->salesRep()->create();
+        $lead = Lead::factory()->create();
+
+        $response = $this->actingAs($rep)->delete(route('leads.destroy', $lead));
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('leads', ['id' => $lead->id]);
+    }
+
     public function test_can_export_leads_to_csv(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         Lead::factory()->create(['first_name' => 'ExportableLeadFirstName']);
 
-        $response = $this->actingAs($user)->get(route('leads.export'));
+        $response = $this->actingAs($admin)->get(route('leads.export'));
 
         $response->assertStatus(200);
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $this->assertStringContainsString('ExportableLeadFirstName', $response->streamedContent());
+    }
+
+    public function test_sales_rep_cannot_export_leads_to_csv(): void
+    {
+        $rep = User::factory()->salesRep()->create();
+
+        $response = $this->actingAs($rep)->get(route('leads.export'));
+
+        $response->assertStatus(403);
     }
 }
